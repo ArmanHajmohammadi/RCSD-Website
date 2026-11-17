@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>P–M Interaction Explorer · RCSD · Sharif University of Technology</title>
+<meta name="description" content="Interactive axial load–moment interaction diagram for rectangular tied and spiral RC columns (SI units, ABA 1400 / ACI 318-19).">
+
+<!-- Fonts (Google Fonts, with system fallbacks declared in --font-* tokens) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap" rel="stylesheet">
+
+<!-- KaTeX (pinned) for the equations panel. The page still works offline: equations fall back to plain TeX. -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+
+<style>
+/* =====================================================================
+   RCSD SIMULATION DESIGN SYSTEM  (reusable across simulations)
+   ---------------------------------------------------------------------
+   Palette derived from logo.png pixels: dominant colour #0025C6
+   (HSL 228.8°, 100%, 39%). Neutrals share the logo hue at low
+   saturation; the accent is the complementary hue (≈43°, amber).
+   Every colour in the page comes from these variables.
+   ===================================================================== */
+:root {
+  /* ---- Light theme ---- */
+  --primary: #0025c6;        /* logo blue (exact pixel colour) */
+  --primary-strong: #001d99; /* hover / pressed */
+  --primary-soft: #e8ecff;   /* tinted backgrounds */
+  --accent: #a87800;         /* complementary amber (≥3:1 on surface) */
+  --accent-soft: #fff3d6;
+  --bg: #f7f7fb;
+  --surface: #ffffff;
+  --surface-2: #f0f1f7;
+  --border: #d8dae4;
+  --text: #141829;
+  --text-muted: #5a5e72;
+  --ok: #178250;
+  --bad: #c5202b;
+  --ok-soft: color-mix(in srgb, var(--ok) 12%, transparent);
+  --bad-soft: color-mix(in srgb, var(--bad) 12%, transparent);
+  --grid: color-mix(in srgb, var(--text) 8%, transparent);
+  --shadow: 0 1px 2px rgba(20,24,41,.06), 0 8px 24px rgba(20,24,41,.06);
+  --logo-badge: #ffffff;
+
+  /* ---- Type, shape, motion (theme-independent) ---- */
+  --font-ui: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-head: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+  --radius: 14px;
+  --radius-sm: 8px;
+  --gap: clamp(12px, 2vw, 20px);
+  --t-theme: 280ms ease;     /* theme cross-fade */
+  --t-fast: 160ms ease;
+  color-scheme: light;
+}
+[data-theme="dark"] {
+  --primary: #7a93ff;
+  --primary-strong: #adbdff;
+  --primary-soft: #192143;
+  --accent: #ffc73d;
+  --accent-soft: #3b3116;
+  --bg: #0d0f19;
+  --surface: #161925;
+  --surface-2: #1e2231;
+  --border: #323648;
+  --text: #e8eaf3;
+  --text-muted: #a2a6b9;
+  --ok: #59cf98;
+  --bad: #f4717a;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  --logo-badge: #f4f6ff;     /* the blue mark sits on a light disc in dark mode */
+  color-scheme: dark;
+}
+
+/* ---- Base ---- */
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; font-family: var(--font-ui); font-size: 15px; line-height: 1.55;
+  color: var(--text); background: var(--bg);
+  transition: background-color var(--t-theme), color var(--t-theme);
+}
+.card, .site-header, .site-footer, input, button, .pill, .seg button {
+  transition: background-color var(--t-theme), color var(--t-theme), border-color var(--t-theme), box-shadow var(--t-theme);
+}
+h1, h2, h3 { font-family: var(--font-head); line-height: 1.2; margin: 0; }
+.mono, .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+a { color: var(--primary); }
+:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 4px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+
+/* ---- Header (reusable) ---- */
+.site-header {
+  position: sticky; top: 0; z-index: 20;
+  background: color-mix(in srgb, var(--surface) 86%, transparent);
+  backdrop-filter: saturate(1.4) blur(10px); -webkit-backdrop-filter: saturate(1.4) blur(10px);
+  border-bottom: 1px solid var(--border);
+}
+.header-inner { max-width: 1320px; margin: 0 auto; padding: 10px var(--gap); display: flex; align-items: center; gap: 14px; }
+.logo-badge {
+  width: 52px; height: 52px; flex: none; border-radius: 50%; display: grid; place-items: center;
+  background: var(--logo-badge); box-shadow: 0 0 0 1px var(--border);
+}
+.logo-badge img { width: 44px; height: 44px; display: block; }
+.brand { min-width: 0; }
+.brand .course { font-family: var(--font-head); font-weight: 700; font-size: clamp(15px, 2.1vw, 19px); letter-spacing: .1px; }
+.brand .uni { font-size: 12.5px; color: var(--text-muted); }
+@media (max-width: 560px) { .theme-toggle .lbl-light, .theme-toggle .lbl-dark, [data-theme="dark"] .theme-toggle .lbl-dark { display: none; } .theme-toggle { padding: 0 10px; } .logo-badge { width: 44px; height: 44px; } .logo-badge img { width: 37px; height: 37px; } }
+.header-spacer { flex: 1; }
+.theme-toggle {
+  display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 12px;
+  border-radius: 999px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
+  font: 500 13px var(--font-ui); cursor: pointer;
+}
+.theme-toggle:hover { border-color: var(--primary); }
+.theme-toggle svg { width: 18px; height: 18px; transition: transform 500ms cubic-bezier(.3,1.4,.5,1); }
+[data-theme="dark"] .theme-toggle svg { transform: rotate(-180deg); }
+.theme-toggle .lbl-dark, [data-theme="dark"] .theme-toggle .lbl-light { display: none; }
+[data-theme="dark"] .theme-toggle .lbl-dark { display: inline; }
+
+/* ---- Footer (reusable) ---- */
+.site-footer { border-top: 1px solid var(--border); background: var(--surface); margin-top: 32px; }
+.footer-inner { max-width: 1320px; margin: 0 auto; padding: 18px var(--gap); display: flex; flex-wrap: wrap; gap: 6px 18px; justify-content: space-between; font-size: 13px; color: var(--text-muted); }
+.footer-inner strong { color: var(--text); font-weight: 600; }
+
+/* ---- Layout primitives ---- */
+.wrap { max-width: 1320px; margin: 0 auto; padding: var(--gap); }
+.card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: clamp(14px, 2vw, 20px);
+  animation: rise 520ms cubic-bezier(.2,.8,.2,1) both;
+}
+.card h2 { font-size: 18px; margin-bottom: 4px; }
+.card .sub { color: var(--text-muted); font-size: 13px; margin: 0 0 12px; }
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--primary-soft); color: var(--primary); border: 1px solid transparent; }
+.pill.muted { background: var(--surface-2); color: var(--text-muted); }
+.btn {
+  display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font: 500 13px var(--font-ui); cursor: pointer;
+}
+.btn:hover { border-color: var(--primary); color: var(--primary); }
+.btn.primary { background: var(--primary); border-color: var(--primary); color: var(--surface); }
+.btn.primary:hover { background: var(--primary-strong); color: var(--surface); }
+
+/* =====================================================================
+   SIMULATION-SPECIFIC STYLES
+   ===================================================================== */
+.hero { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; margin: 8px 0 16px; }
+.hero h1 { font-size: clamp(26px, 4vw, 38px); letter-spacing: -.3px; }
+.hero h1 .grad { background: linear-gradient(90deg, var(--primary), color-mix(in srgb, var(--primary) 55%, var(--accent))); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.hero p { margin: 6px 0 0; color: var(--text-muted); max-width: 70ch; }
+.hero .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.layout { display: grid; gap: var(--gap); grid-template-columns: 320px minmax(0, 1fr); align-items: start; }
+.stack { display: grid; gap: var(--gap); }
+#controls { position: sticky; top: 84px; max-height: calc(100vh - 100px); overflow-y: auto; }
+@media (max-width: 980px) {
+  .layout { display: flex; flex-direction: column; }
+  .stack { display: contents; }
+  #controls { position: static; max-height: none; overflow: visible; order: 2; }
+  #card-chart { order: 1; } #card-insp { order: 3; } #card-check { order: 4; }
+}
+
+/* Controls */
+.group-title { font-size: 11.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 14px 0 6px; }
+.group-title:first-of-type { margin-top: 2px; }
+.ctrl { display: grid; grid-template-columns: 1fr 108px; gap: 2px 10px; align-items: center; padding: 6px 0; }
+.ctrl label { font-size: 13.5px; }
+.ctrl label .sym { font-family: var(--font-head); font-style: italic; font-weight: 600; margin-right: 4px; }
+.ctrl .numwrap { position: relative; }
+.ctrl input[type=number] {
+  width: 100%; height: 30px; padding: 0 30px 0 8px; border-radius: 7px; border: 1px solid var(--border);
+  background: var(--surface-2); color: var(--text); font: 500 13px var(--font-mono); text-align: right;
+}
+.ctrl input[type=number]:focus { border-color: var(--primary); outline: none; }
+.ctrl .unit { position: absolute; right: 7px; top: 50%; transform: translateY(-50%); font-size: 10.5px; color: var(--text-muted); pointer-events: none; }
+.ctrl input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--primary); height: 18px; margin: 0; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 3px; gap: 3px; }
+.seg button { height: 32px; border: 0; border-radius: 7px; background: transparent; color: var(--text-muted); font: 600 13px var(--font-ui); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.derived { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border); font-size: 12.5px; }
+.derived div span { display: block; color: var(--text-muted); font-size: 11px; }
+.derived div b { font: 600 13px var(--font-mono); }
+.warns { margin: 10px 0 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.warns li { font-size: 12.5px; padding: 7px 10px; border-radius: 8px; background: var(--accent-soft); color: var(--text); border-left: 3px solid var(--accent); }
+.warns li.info { background: var(--primary-soft); border-left-color: var(--primary); }
+
+/* Chart */
+.chart-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; color: var(--text-muted); }
+.legend i { display: inline-block; width: 22px; height: 0; border-top: 3px solid var(--primary); vertical-align: middle; margin-right: 6px; }
+.legend i.nom { border-top: 2px dashed var(--text-muted); }
+.legend i.ghost { border-top: 2px dashed var(--accent); }
+.legend i.pt { width: 10px; height: 10px; border: 0; border-radius: 50%; background: var(--accent); }
+.chart-box { position: relative; }
+#chart { width: 100%; display: block; touch-action: none; user-select: none; }
+#chart text { font-family: var(--font-ui); fill: var(--text-muted); font-size: 11.5px; }
+#chart .axis { stroke: var(--text-muted); stroke-width: 1.2; }
+#chart .gridl { stroke: var(--grid); stroke-width: 1; }
+#chart .curve { fill: none; stroke-linejoin: round; stroke-linecap: round; transition: d 450ms cubic-bezier(.3,.8,.3,1); }
+#chart .des { stroke: var(--primary); stroke-width: 3; }
+#chart .desfill { fill: var(--primary); opacity: .07; stroke: none; transition: d 450ms cubic-bezier(.3,.8,.3,1); }
+#chart .nom { stroke: var(--text-muted); stroke-width: 1.8; stroke-dasharray: 6 5; }
+#chart .ghost { stroke: var(--accent); stroke-width: 1.8; stroke-dasharray: 3 4; opacity: .9; }
+#chart .ray { stroke: var(--text-muted); stroke-width: 1; stroke-dasharray: 2 4; opacity: .7; }
+#chart .zone-lbl { font-size: 10.5px; font-weight: 600; letter-spacing: .03em; }
+#chart .key circle { fill: var(--surface); stroke: var(--primary); stroke-width: 2.2; }
+#chart .key text { fill: var(--text); font-weight: 600; font-size: 11.5px; }
+#chart .applied circle { fill: var(--accent); stroke: var(--surface); stroke-width: 2; }
+#chart .applied line { stroke: var(--accent); stroke-width: 1.6; stroke-dasharray: 5 4; }
+#chart .hov-line { stroke: var(--text); stroke-width: 1; opacity: .35; }
+#chart .hov-d { fill: var(--primary); stroke: var(--surface); stroke-width: 2; }
+#chart .hov-n { fill: var(--surface); stroke: var(--text-muted); stroke-width: 2; }
+#chart .pulse { fill: none; stroke: var(--primary); stroke-width: 2; animation: pulse 1.6s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes pulse { from { opacity: .8; transform: scale(1); } to { opacity: 0; transform: scale(2.6); } }
+.tip {
+  position: absolute; pointer-events: none; min-width: 150px; padding: 8px 10px; border-radius: 10px; font-size: 12px;
+  background: color-mix(in srgb, var(--surface) 94%, transparent); border: 1px solid var(--border); box-shadow: var(--shadow);
+  opacity: 0; transform: translateY(4px); transition: opacity var(--t-fast), transform var(--t-fast);
+}
+.tip.show { opacity: 1; transform: none; }
+.tip b { font-family: var(--font-mono); }
+.scrub { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; margin-top: 8px; font-size: 12.5px; color: var(--text-muted); }
+.scrub input { width: 100%; accent-color: var(--primary); }
+
+/* Inspector */
+.insp-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: var(--gap); }
+@media (max-width: 760px) { .insp-grid { grid-template-columns: 1fr; } }
+#insp-svg, #phi-svg { width: 100%; display: block; }
+#insp-svg text, #phi-svg text { font-family: var(--font-ui); font-size: 11px; fill: var(--text-muted); }
+.readouts { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; }
+.ro { background: var(--surface-2); border-radius: 10px; padding: 8px 10px; }
+.ro span { display: block; font-size: 11px; color: var(--text-muted); }
+.ro b { font: 600 15px var(--font-mono); }
+.ro.wide { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; }
+.region { font-weight: 700; font-size: 13px; }
+@media (max-width: 520px) { .readouts { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+.tbl-wrap { overflow-x: auto; }
+table.steel { width: 100%; white-space: nowrap; border-collapse: collapse; font-size: 12.5px; margin-top: 10px; }
+table.steel th, table.steel td { padding: 5px 6px; text-align: right; border-bottom: 1px solid var(--border); }
+table.steel th { font-weight: 600; color: var(--text-muted); font-size: 11.5px; }
+table.steel td:first-child, table.steel th:first-child { text-align: left; }
+table.steel td { font-family: var(--font-mono); }
+.tag-y { color: var(--bad); font-weight: 600; } .tag-e { color: var(--text-muted); }
+
+/* Applied load check */
+.check-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.check-row .ctrl { grid-template-columns: 1fr; }
+.result { margin-top: 12px; border-radius: 12px; padding: 12px 14px; display: grid; gap: 8px; border: 1px solid var(--border); }
+.result.ok { background: var(--ok-soft); border-color: color-mix(in srgb, var(--ok) 40%, transparent); }
+.result.bad { background: var(--bad-soft); border-color: color-mix(in srgb, var(--bad) 40%, transparent); }
+.result .verdict { font-weight: 700; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+.result.ok .verdict { color: var(--ok); } .result.bad .verdict { color: var(--bad); }
+.meter { height: 10px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+.meter > div { height: 100%; border-radius: 999px; background: var(--ok); transition: width 380ms cubic-bezier(.3,.8,.3,1), background-color var(--t-fast); }
+.result.bad .meter > div { background: var(--bad); }
+.result small { color: var(--text-muted); font-size: 12px; }
+
+/* Experiments */
+.exp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+.exp { border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; background: var(--surface-2); display: flex; flex-direction: column; gap: 6px; transition: transform var(--t-fast), border-color var(--t-fast); }
+.exp:hover { transform: translateY(-2px); border-color: var(--primary); }
+.exp .n { font: 700 12px var(--font-mono); color: var(--primary); }
+.exp h3 { font-size: 15.5px; }
+.exp p { margin: 0; font-size: 13px; color: var(--text-muted); }
+.exp .btn { align-self: flex-start; margin-top: auto; }
+
+/* Equations */
+.eq-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px 18px; }
+.eq { padding: 10px 12px; border-radius: 10px; background: var(--surface-2); overflow-x: auto; }
+.eq .cap { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+.eq .tex { font-size: 15px; min-height: 22px; }
+.eq .katex-display { margin: 2px 0 0; text-align: left; }
+.eq .katex-display > .katex { text-align: left; }
+.eq .tex code { font-family: var(--font-mono); font-size: 12.5px; }
+.notes { font-size: 13px; color: var(--text-muted); margin: 12px 0 0; padding-left: 18px; }
+.notes li { margin: 3px 0; }
+</style>
+</head>
+<body>
+
+<!-- ============ HEADER (reusable) ============ -->
+<header class="site-header">
+  <div class="header-inner">
+    <div class="logo-badge"><img alt="Sharif University of Technology logo" src="data:image/png;base64,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"></div>
+    <div class="brand">
+      <div class="course">Reinforced Concrete Structures Design</div>
+      <div class="uni">Sharif University of Technology · Department of Civil Engineering</div>
+    </div>
+    <div class="header-spacer"></div>
+    <button class="theme-toggle" id="themeToggle" type="button" aria-label="Toggle dark mode" aria-pressed="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.2M12 19.8V22M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M2 12h2.2M19.8 12H22M4.9 19.1l1.6-1.6M17.5 6.5l1.6-1.6"/>
+      </svg>
+      <span class="lbl-light">Light</span><span class="lbl-dark">Dark</span>
+    </button>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="hero">
+    <div>
+      <h1><span class="grad">P–M Interaction</span> Explorer</h1>
+      <p>Strain compatibility for a rectangular tied or spiral column. Change the section and watch the nominal and design interaction curves respond. Hover the curve to see the strains, the stress block and the steel stresses behind every point.</p>
+    </div>
+    <div class="tags"><span class="pill">Ch. 8 · Short columns</span><span class="pill muted">ABA 1400 / ACI 318-19</span><span class="pill muted">SI · mm · MPa · kN</span></div>
+  </section>
+
+  <div class="layout">
+    <!-- ============ CONTROLS ============ -->
+    <aside class="card" id="controls" aria-label="Section inputs">
+      <h2>Section</h2>
+      <p class="sub">Bending about the axis parallel to b; h is the depth in the bending direction.</p>
+      <div id="ctrl-host"></div>
+      <div class="group-title">Transverse reinforcement</div>
+      <div class="seg" role="group" aria-label="Transverse reinforcement type">
+        <button type="button" id="btnTied" aria-pressed="true">Tied</button>
+        <button type="button" id="btnSpiral" aria-pressed="false">Spiral</button>
+      </div>
+      <div class="derived" id="derived"></div>
+      <ul class="warns" id="warns"></ul>
+      <div style="display:flex; gap:8px; margin-top:12px;"><button class="btn" id="btnReset" type="button">Reset defaults</button></div>
+    </aside>
+
+    <div class="stack">
+      <!-- ============ CHART ============ -->
+      <section class="card" id="card-chart" aria-label="Interaction diagram">
+        <div class="chart-head">
+          <div>
+            <h2>Interaction diagram</h2>
+            <div class="legend">
+              <span><i></i>Design φPn–φMn</span><span><i class="nom"></i>Nominal Pn–Mn</span>
+              <span id="lgGhost" hidden><i class="ghost"></i>Pinned comparison</span><span><i class="pt"></i>Applied (Pu, Mu)</span>
+            </div>
+          </div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button class="btn" id="btnPin" type="button" title="Keep the current design curve as a dashed reference">Pin curve</button>
+            <button class="btn" id="btnUnpin" type="button" hidden>Clear pin</button>
+          </div>
+        </div>
+        <div class="chart-box">
+          <svg id="chart" role="img" aria-label="Axial load versus moment interaction diagram"></svg>
+          <div class="tip" id="tip"></div>
+        </div>
+        <div class="scrub">
+          <span>Neutral axis c</span>
+          <input type="range" id="scrub" min="0" max="1000" step="1" aria-label="Move along the curve by neutral-axis depth">
+          <span class="num" id="scrubVal">–</span>
+        </div>
+      </section>
+
+      <!-- ============ INSPECTOR ============ -->
+      <section class="card" id="card-insp" aria-label="Point inspector">
+        <div class="chart-head">
+          <div><h2>What's happening at this point</h2><p class="sub" style="margin:0">Hover or tap the curve; tap again to release. Key-point markers snap exactly.</p></div>
+          <span class="pill" id="inspTag">Balanced point</span>
+        </div>
+        <div class="insp-grid">
+          <div>
+            <svg id="insp-svg" viewBox="0 0 560 230" aria-label="Section, strain and force diagrams"></svg>
+            <svg id="phi-svg" viewBox="0 0 560 92" aria-label="Strength reduction factor versus net tensile strain"></svg>
+          </div>
+          <div>
+            <div class="readouts" id="readouts"></div>
+            <div class="tbl-wrap"><table class="steel" id="steelTable"></table></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ APPLIED LOAD CHECK ============ -->
+      <section class="card" id="card-check" aria-label="Applied load check">
+        <h2>Check an applied load</h2>
+        <p class="sub">Compression positive. Utilization = distance to (Mu, Pu) ÷ distance to the design curve along the same ray from the origin (constant eccentricity e = Mu/Pu).</p>
+        <div class="check-row" id="check-host"></div>
+        <div class="result" id="result"></div>
+      </section>
+    </div>
+  </div>
+
+  <!-- ============ WHAT TO NOTICE ============ -->
+  <section class="card" style="margin-top: var(--gap);" aria-label="Guided experiments">
+    <h2>What to notice</h2>
+    <p class="sub">Each experiment pins the current curve first, so you can compare before and after. Predict the change before you press the button.</p>
+    <div class="exp-grid" id="exp-host"></div>
+  </section>
+
+  <!-- ============ EQUATIONS ============ -->
+  <section class="card" style="margin-top: var(--gap);" aria-label="Governing equations">
+    <h2>Governing equations</h2>
+    <p class="sub">Course notation (RCSD notes, Ch. 8, PDF pp. 67–70 and 79–80). Depths d<sub>i</sub> are measured from the extreme compression fibre; steel strain and stress are positive in compression.</p>
+    <div class="eq-grid" id="eq-host"></div>
+    <ul class="notes">
+      <li>Moments are taken about mid-depth h/2. Reinforcement here is always symmetric, so mid-depth is also the plastic centroid.</li>
+      <li>Steel is elastic–perfectly plastic. Bars inside the stress block (d<sub>i</sub> &lt; a) deduct the displaced concrete, 0.85f'c.</li>
+      <li>ε<sub>y</sub> = f<sub>y</sub>/E<sub>s</sub> (the notes sometimes round it to 0.002). The tension-controlled limit is ε<sub>t</sub> = 0.005, as in the notes.</li>
+      <li>The spiral option changes only φ and the axial cap. It assumes a code-compliant spiral (ρ<sub>s</sub> ≥ 0.45(A<sub>g</sub>/A<sub>ch</sub> − 1)f'c/f<sub>yt</sub>), which is unusual for rectangular sections.</li>
+      <li>Short-column capacity only: no slenderness effects, no biaxial bending. Use for learning; check designs by hand.</li>
+    </ul>
+  </section>
+</main>
+
+<!-- ============ FOOTER (reusable) ============ -->
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div>Instructor: <strong>Prof. Kiarash Mohtasham Dolatshahi</strong> | Teaching Assistant: <strong>Arman Hajmohammadi</strong></div>
+    <div>Reinforced Concrete Structures Design · Sharif University of Technology</div>
+  </div>
+</footer>
+
+<script>
+/* =====================================================================
+   1. THEME (reusable): follows the system preference until the user
+      clicks the toggle. No storage is used, by design.
+   ===================================================================== */
+(function themeInit() {
+  const root = document.documentElement, btn = document.getElementById('themeToggle');
+  const mq = window.matchMedia('(prefers-color-scheme: dark)');
+  let userChoice = null;
+  const apply = t => { root.dataset.theme = t; btn.setAttribute('aria-pressed', t === 'dark'); document.dispatchEvent(new CustomEvent('themechange')); };
+  apply(mq.matches ? 'dark' : 'light');
+  mq.addEventListener('change', e => { if (!userChoice) apply(e.matches ? 'dark' : 'light'); });
+  btn.addEventListener('click', () => { userChoice = root.dataset.theme === 'dark' ? 'light' : 'dark'; apply(userChoice); });
+})();
+
+/* =====================================================================
+   2. ENGINEERING ENGINE (pure functions, no DOM). Units: N, mm, MPa
+      inside; results reported in kN and kN·m.
+   ===================================================================== */
+const EPS_CU = 0.003;            // ultimate concrete strain
+const EPS_TC = 0.005;            // tension-controlled limit (notes)
+const BAR_SIZES = [12, 14, 16, 18, 20, 22, 25, 28, 30, 32, 36, 40];   // Iranian market sizes, mm
+
+const RC = {
+  /** β1 per the notes / ACI 318-19 */
+  beta1(fc) { return Math.min(0.85, Math.max(0.65, 0.85 - 0.05 * (fc - 28) / 7)); },
+
+  /** Bar layers: top face, evenly spaced side-bar rows (2 bars each), bottom face. */
+  layout(p) {
+    const dp = p.cover + p.ds + p.db / 2;           // d' : compression face to bar centre
+    const Ab = Math.PI * p.db * p.db / 4;
+    const L = [{ d: dp, n: p.nFace }];
+    for (let i = 1; i <= p.nSide; i++) L.push({ d: dp + i * (p.h - 2 * dp) / (p.nSide + 1), n: 2 });
+    L.push({ d: p.h - dp, n: p.nFace });
+    L.forEach(l => (l.As = l.n * Ab));
+    const Ast = L.reduce((s, l) => s + l.As, 0);
+    return { L, dp, Ab, Ast, nBars: L.reduce((s, l) => s + l.n, 0), dt: p.h - dp };
+  },
+
+  /** φ from net tensile strain εt (tension positive) */
+  phi(epsT, p) {
+    const ey = p.fy / p.Es, lo = p.spiral ? 0.75 : 0.65, k = p.spiral ? 0.15 : 0.25;
+    if (epsT <= ey) return lo;
+    if (epsT >= EPS_TC) return 0.9;
+    return lo + k * (epsT - ey) / (EPS_TC - ey);
+  },
+
+  /** Strain compatibility at neutral-axis depth c (mm from compression face). */
+  at(p, g, c) {
+    const b1 = this.beta1(p.fc), a = Math.min(b1 * c, p.h), ey = p.fy / p.Es;
+    const Cc = 0.85 * p.fc * a * p.b;                          // N
+    let P = Cc, M = Cc * (p.h / 2 - a / 2);                     // N, N·mm
+    const steel = g.L.map(l => {
+      const eps = EPS_CU * (c - l.d) / c;                       // + compression
+      const fs = Math.max(-p.fy, Math.min(p.fy, p.Es * eps));
+      const inBlock = l.d < a;
+      const F = l.As * (fs - (inBlock ? 0.85 * p.fc : 0));      // F_si
+      P += F; M += F * (p.h / 2 - l.d);
+      return { d: l.d, n: l.n, As: l.As, eps, fs, F: F / 1e3, inBlock, yielded: Math.abs(eps) >= ey - 1e-12 };
+    });
+    const epsT = EPS_CU * (g.dt - c) / c;                       // + tension, extreme layer
+    const phi = this.phi(epsT, p);
+    return { c, a, b1, Cc: Cc / 1e3, steel, Pn: P / 1e3, Mn: M / 1e6, epsT, phi, Z: -epsT / ey, ey };
+  },
+
+  /** Full analysis: nominal curve, design curve, key points. */
+  analyze(p) {
+    const g = this.layout(p), Ag = p.b * p.h, ey = p.fy / p.Es;
+    const P0 = (0.85 * p.fc * (Ag - g.Ast) + p.fy * g.Ast) / 1e3;
+    const capF = p.spiral ? 0.85 : 0.80, phiC = p.spiral ? 0.75 : 0.65;
+    const Pnmax = capF * P0, phiPnmax = phiC * Pnmax;
+    const Pt = -p.fy * g.Ast / 1e3;
+
+    // Sweep c on a log scale (fixed count so the curve can morph smoothly)
+    const N = 260, cHi = 40 * p.h, cLo = 0.003 * p.h, S = [];
+    for (let i = 0; i < N; i++) S.push(this.at(p, g, cHi * Math.pow(cLo / cHi, i / (N - 1))));
+
+    // Key points
+    const cb = EPS_CU * g.dt / (EPS_CU + ey);
+    const bal = this.at(p, g, cb);
+    const tc = this.at(p, g, EPS_CU * g.dt / (EPS_CU + EPS_TC));
+    let lo = cLo, hi = p.h * 2;
+    for (let i = 0; i < 80; i++) { const m = (lo + hi) / 2; if (this.at(p, g, m).Pn > 0) hi = m; else lo = m; }
+    const pb = this.at(p, g, (lo + hi) / 2);                   // pure bending (Pn = 0)
+
+    // Nominal polyline (M ≥ 0 half): P0 → sweep → pure tension
+    const nominal = [{ M: 0, P: P0 }, ...S.map(s => ({ M: s.Mn, P: s.Pn })), { M: 0, P: Pt }];
+    // Design polyline, then clip at φPn,max
+    const raw = [{ M: 0, P: phiC * P0 }, ...S.map(s => ({ M: s.phi * s.Mn, P: s.phi * s.Pn })), { M: 0, P: 0.9 * Pt }];
+    const design = [{ M: 0, P: phiPnmax }];
+    for (let i = 1; i < raw.length; i++) {
+      const A = raw[i - 1], B = raw[i];
+      if (A.P > phiPnmax && B.P <= phiPnmax) {                  // crossing the cap: insert intersection
+        const t = (A.P - phiPnmax) / (A.P - B.P);
+        design.push({ M: A.M + t * (B.M - A.M), P: phiPnmax });
+      }
+      if (B.P <= phiPnmax) design.push(B);
+    }
+    return { p, g, Ag, ey, P0, Pnmax, phiPnmax, phiC, capF, Pt, S, nominal, design, bal, tc, pb, cb };
+  },
+
+  /** Utilization of (Mu, Pu) along the ray from the origin to the design curve. */
+  utilization(design, Mu, Pu) {
+    const m = Math.abs(Mu), r = Math.hypot(m, Pu);
+    if (r < 1e-9) return { u: 0, M: 0, P: 0 };
+    let best = Infinity;
+    for (let i = 1; i < design.length; i++) {
+      const A = design[i - 1], B = design[i], dx = B.M - A.M, dy = B.P - A.P;
+      const det = -m * dy + dx * Pu;
+      if (Math.abs(det) < 1e-12) continue;
+      const t = (-A.M * dy + dx * A.P) / det, s = (m * A.P - Pu * A.M) / det;
+      if (s >= -1e-9 && s <= 1 + 1e-9 && t > 1e-12 && t < best) best = t;
+    }
+    if (!isFinite(best)) return { u: Infinity, M: 0, P: 0 };
+    return { u: 1 / best, M: best * m, P: best * Pu };
+  }
+};
+
+/* =====================================================================
+   3. UI STATE + CONTROLS
+   ===================================================================== */
+const DEFAULTS = { b: 400, h: 400, cover: 40, ds: 10, db: 20, nFace: 3, nSide: 1, fc: 30, fy: 420, Es: 200000, spiral: false };
+const state = { p: { ...DEFAULTS }, res: null, ghost: null, sel: null, pinned: false, Pu: 1500, Mu: 150 };
+
+const CONTROLS = [
+  { group: 'Geometry' },
+  { k: 'b', sym: 'b', label: 'Width', unit: 'mm', min: 200, max: 1200, step: 10 },
+  { k: 'h', sym: 'h', label: 'Depth', unit: 'mm', min: 200, max: 1200, step: 10 },
+  { k: 'cover', sym: '', label: 'Clear cover', unit: 'mm', min: 20, max: 75, step: 5 },
+  { group: 'Reinforcement' },
+  { k: 'db', sym: 'd_b', label: 'Bar diameter', unit: 'mm', list: BAR_SIZES },
+  { k: 'nFace', sym: '', label: 'Bars per face (top & bottom)', unit: '', min: 2, max: 10, step: 1 },
+  { k: 'nSide', sym: '', label: 'Side bars per side', unit: '', min: 0, max: 8, step: 1 },
+  { k: 'ds', sym: 'd_s', label: 'Tie / spiral bar', unit: 'mm', list: [8, 10, 12, 14, 16] },
+  { group: 'Materials' },
+  { k: 'fc', sym: "f'c", label: '', unit: 'MPa', min: 20, max: 70, step: 1 },
+  { k: 'fy', sym: 'fy', label: '', unit: 'MPa', min: 300, max: 600, step: 10 },
+  { k: 'Es', sym: 'Es', label: '', unit: 'MPa', min: 190000, max: 210000, step: 1000 }
+];
+
+const $ = id => document.getElementById(id);
+const fmt = (x, d = 0) => (Number.isFinite(x) ? x.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }) : '–');
+const symHTML = s => s.replace(/_(\w)/, '<sub>$1</sub>').replace(/^fy$/, 'f<sub>y</sub>').replace(/^Es$/, 'E<sub>s</sub>').replace(/^f'c$/, "f'<sub>c</sub>");
+
+/** Build one slider + number input pair. List-type controls snap to allowed values. */
+function makeControl(host, c, getVal, setVal) {
+  const id = 'in_' + c.k, wrap = document.createElement('div');
+  wrap.className = 'ctrl';
+  const isList = !!c.list;
+  wrap.innerHTML = `
+    <label for="${id}">${c.sym ? `<span class="sym">${symHTML(c.sym)}</span>` : ''}${c.label}</label>
+    <div class="numwrap"><input type="number" id="${id}" ${isList ? '' : `min="${c.min}" max="${c.max}" step="${c.step}"`} inputmode="decimal"><span class="unit">${c.unit}</span></div>
+    <input type="range" aria-label="${c.label || c.sym}" ${isList ? `min="0" max="${c.list.length - 1}" step="1"` : `min="${c.min}" max="${c.max}" step="${c.step}"`}>`;
+  host.appendChild(wrap);
+  const num = wrap.querySelector('input[type=number]'), rng = wrap.querySelector('input[type=range]');
+  const snap = v => isList ? c.list.reduce((a, b) => Math.abs(b - v) < Math.abs(a - v) ? b : a) : Math.min(c.max, Math.max(c.min, v));
+  const sync = () => { const v = getVal(); num.value = v; rng.value = isList ? c.list.indexOf(v) : v; };
+  rng.addEventListener('input', () => { setVal(isList ? c.list[+rng.value] : +rng.value); sync(); });
+  num.addEventListener('change', () => { const v = parseFloat(num.value); if (Number.isFinite(v)) setVal(snap(v)); sync(); });
+  sync();
+  return sync;
+}
+
+const syncers = [];
+function buildControls() {
+  const host = $('ctrl-host');
+  CONTROLS.forEach(c => {
+    if (c.group) { const t = document.createElement('div'); t.className = 'group-title'; t.textContent = c.group; host.appendChild(t); return; }
+    syncers.push(makeControl(host, c, () => state.p[c.k], v => { state.p[c.k] = v; update(); }));
+  });
+  const ch = $('check-host');
+  syncers.push(makeControl(ch, { k: 'Pu', sym: 'P_u', label: '', unit: 'kN', min: -3000, max: 12000, step: 10 }, () => state.Pu, v => { state.Pu = v; renderCheck(); renderChart(); }));
+  syncers.push(makeControl(ch, { k: 'Mu', sym: 'M_u', label: '', unit: 'kN·m', min: 0, max: 2500, step: 5 }, () => state.Mu, v => { state.Mu = v; renderCheck(); renderChart(); }));
+  const setType = sp => { state.p.spiral = sp; $('btnTied').setAttribute('aria-pressed', !sp); $('btnSpiral').setAttribute('aria-pressed', sp); update(); };
+  $('btnTied').onclick = () => setType(false);
+  $('btnSpiral').onclick = () => setType(true);
+  state.setType = setType;
+  $('btnReset').onclick = () => { state.p = { ...DEFAULTS }; syncers.forEach(s => s()); setType(false); };
+  $('btnPin').onclick = pinCurve;
+  $('btnUnpin').onclick = () => { state.ghost = null; $('btnUnpin').hidden = true; $('lgGhost').hidden = true; renderChart(); };
+}
+function pinCurve() {
+  state.ghost = { design: state.res.design.map(q => ({ ...q })), bal: { M: state.res.bal.phi * state.res.bal.Mn, P: state.res.bal.phi * state.res.bal.Pn } };
+  $('btnUnpin').hidden = false; $('lgGhost').hidden = false; renderChart();
+}
+
+/* Derived properties and detailing warnings (notes p. 74–75) */
+function renderDerived() {
+  const { p, g, Ag, ey } = state.res, rho = g.Ast / Ag;
+  const sFace = p.nFace > 1 ? (p.b - 2 * (p.cover + p.ds) - p.nFace * p.db) / (p.nFace - 1) : Infinity;
+  const sSide = (p.h - 2 * g.dp) / (p.nSide + 1) - p.db;
+  const sMin = Math.max(1.5 * p.db, 40);
+  $('derived').innerHTML = [
+    ['Bars', `${g.nBars} φ${p.db}`], ['A<sub>st</sub>', `${fmt(g.Ast)} mm²`],
+    ['ρ<sub>t</sub> = A<sub>st</sub>/A<sub>g</sub>', `${fmt(rho * 100, 2)} %`], ["d' / d<sub>t</sub>", `${fmt(g.dp, 0)} / ${fmt(g.dt, 0)} mm`],
+    ['β<sub>1</sub>', fmt(RC.beta1(p.fc), 3)], ['ε<sub>y</sub> = f<sub>y</sub>/E<sub>s</sub>', fmt(ey, 5)]
+  ].map(([a, b]) => `<div><span>${a}</span><b>${b}</b></div>`).join('');
+  const w = [];
+  if (rho < 0.01) w.push(`ρ<sub>t</sub> = ${fmt(rho * 100, 2)}% is below the 1% minimum (notes p. 74).`);
+  if (rho > 0.08) w.push(`ρ<sub>t</sub> = ${fmt(rho * 100, 2)}% exceeds the 8% code maximum.`);
+  else if (rho > 0.04) w.push(`ρ<sub>t</sub> above 4%: allowed, but the notes advise against it (congestion, honeycombing).`);
+  if (Math.min(sFace, sSide) < sMin) w.push(`Clear bar spacing ${fmt(Math.min(sFace, sSide), 0)} mm is less than max(1.5d<sub>b</sub>, 40 mm) = ${fmt(sMin, 0)} mm (notes p. 75).`);
+  if (p.h - 2 * g.dp <= 0 || sFace < 0) w.push('Bars do not fit in this section.');
+  const info = p.spiral ? ['Spiral: φ = 0.75 and P<sub>n,max</sub> = 0.85P<sub>0</sub> assume a code-compliant spiral.'] : [];
+  $('warns').innerHTML = w.map(x => `<li>${x}</li>`).join('') + info.map(x => `<li class="info">${x}</li>`).join('');
+}
+
+/* =====================================================================
+   4. CHART (hand-built SVG so every colour is a CSS variable)
+   ===================================================================== */
+const NS = 'http://www.w3.org/2000/svg';
+const chart = { W: 720, H: 500, pad: { l: 64, r: 18, t: 18, b: 46 }, sx: null, sy: null, els: {} };
+
+function niceStep(range, target) {
+  const raw = range / target, mag = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / mag;
+  return (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * mag;
+}
+function initChart() {
+  const svg = $('chart');
+  svg.innerHTML = `
+    <g id="gGrid"></g>
+    <path class="desfill" id="pFill"></path>
+    <g id="gRays"></g>
+    <path class="curve ghost" id="pGhost"></path>
+    <path class="curve nom" id="pNom"></path>
+    <path class="curve des" id="pDes"></path>
+    <g id="gKeys" class="key"></g>
+    <g id="gApplied" class="applied"></g>
+    <g id="gHover"></g>`;
+  ['gGrid', 'pFill', 'gRays', 'pGhost', 'pNom', 'pDes', 'gKeys', 'gApplied', 'gHover'].forEach(id => (chart.els[id] = $(id)));
+  const ro = new ResizeObserver(() => renderChart());
+  ro.observe(svg.parentElement);
+  svg.addEventListener('pointermove', onHover);
+  svg.addEventListener('pointerleave', () => { if (!state.pinned) { state.sel = defaultSel(); renderHover(); renderInspector(); } $('tip').classList.remove('show'); });
+  svg.addEventListener('click', onClick);
+}
+function renderChart() {
+  const r = state.res; if (!r) return;
+  const svg = $('chart'), box = svg.parentElement.getBoundingClientRect();
+  const W = Math.max(300, box.width), H = Math.round(Math.min(560, Math.max(330, W * 0.66)));
+  chart.W = W; chart.H = H; chart.pad.l = W < 480 ? 54 : 64;
+  const narrow = W < 560;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.style.height = H + 'px';
+  const { l, r: pr, t, b } = chart.pad;
+
+  // Data bounds
+  let Mmax = Math.max(...r.nominal.map(q => q.M), state.Mu, ...(state.ghost ? state.ghost.design.map(q => q.M) : [0]));
+  let Pmax = Math.max(r.P0, state.Pu), Pmin = Math.min(r.Pt, state.Pu);
+  if (state.ghost) { Pmax = Math.max(Pmax, ...state.ghost.design.map(q => q.P)); Pmin = Math.min(Pmin, ...state.ghost.design.map(q => q.P)); }
+  Mmax *= 1.12; Pmax += 0.06 * (Pmax - Pmin); Pmin -= 0.06 * (Pmax - Pmin);
+  const sx = M => l + (M / Mmax) * (W - l - pr), sy = P => t + (Pmax - P) / (Pmax - Pmin) * (H - t - b);
+  chart.sx = sx; chart.sy = sy; chart.inv = (x, y) => ({ M: (x - l) / (W - l - pr) * Mmax, P: Pmax - (y - t) / (H - t - b) * (Pmax - Pmin) });
+
+  // Grid + axes
+  const sxStep = niceStep(Mmax, W < 480 ? 4 : 7), syStep = niceStep(Pmax - Pmin, 7);
+  let g = '';
+  for (let m = 0; m <= Mmax; m += sxStep) g += `<line class="gridl" x1="${sx(m)}" x2="${sx(m)}" y1="${t}" y2="${H - b}"/><text x="${sx(m)}" y="${H - b + 16}" text-anchor="middle">${fmt(m)}</text>`;
+  for (let pv = Math.ceil(Pmin / syStep) * syStep; pv <= Pmax; pv += syStep) g += `<line class="gridl" x1="${l}" x2="${W - pr}" y1="${sy(pv)}" y2="${sy(pv)}"/><text x="${l - 8}" y="${sy(pv) + 4}" text-anchor="end">${fmt(pv)}</text>`;
+  g += `<line class="axis" x1="${l}" x2="${W - pr}" y1="${sy(0)}" y2="${sy(0)}"/><line class="axis" x1="${l}" x2="${l}" y1="${t}" y2="${H - b}"/>`;
+  g += `<text x="${(l + W - pr) / 2}" y="${H - 8}" text-anchor="middle" style="fill:var(--text);font-weight:600">M (kN·m)</text>`;
+  g += `<text transform="translate(14 ${(t + H - b) / 2}) rotate(-90)" text-anchor="middle" style="fill:var(--text);font-weight:600">P (kN), compression +</text>`;
+  chart.els.gGrid.innerHTML = g;
+
+  // Curves
+  const path = pts => pts.map((q, i) => `${i ? 'L' : 'M'}${sx(q.M).toFixed(1)},${sy(q.P).toFixed(1)}`).join('');
+  chart.els.pNom.setAttribute('d', path(r.nominal));
+  chart.els.pDes.setAttribute('d', path(r.design));
+  chart.els.pFill.setAttribute('d', path(r.design) + 'Z');
+  chart.els.pGhost.setAttribute('d', state.ghost ? path(state.ghost.design) : '');
+
+  // Zone rays (from origin through εt = εy and εt = 0.005 on the design curve) + zone labels
+  const ray = (s, lbl) => {
+    const x = sx(s.phi * s.Mn), y = sy(s.phi * s.Pn), x0 = sx(0), y0 = sy(0), k = 1.18;
+    return `<line class="ray" x1="${x0}" y1="${y0}" x2="${x0 + (x - x0) * k}" y2="${y0 + (y - y0) * k}"/><text x="${x0 + (x - x0) * k + 4}" y="${y0 + (y - y0) * k}" class="zone-lbl" style="fill:var(--text-muted)">${lbl}</text>`;
+  };
+  chart.els.gRays.innerHTML = ray(r.bal, 'εt = εy') + ray(r.tc, 'εt = 0.005') +
+    `<text class="zone-lbl" x="${l + 10}" y="${sy(r.phiPnmax) + 18}" style="fill:var(--primary)">${narrow ? 'Comp.-controlled' : 'Compression-controlled'} · φ = ${r.phiC}</text>` +
+    `<text class="zone-lbl" x="${W - pr - 6}" y="${H - b - 8}" text-anchor="end" style="fill:var(--primary)">${narrow ? 'Tension-ctrl.' : 'Tension-controlled'} · φ = 0.9</text>` +
+    `<text x="${l + 10}" y="${sy(r.phiPnmax) - 6}" class="zone-lbl">φPn,max = ${r.phiC} × ${r.capF.toFixed(2)} P₀ = ${fmt(r.phiPnmax)} kN</text>`;
+
+  // Key points (nominal), each clickable for an exact inspector snapshot
+  const keys = [
+    { id: 'P0', M: 0, P: r.P0, lbl: narrow ? 'P₀' : 'P₀ pure compression', s: null },
+    { id: 'B', M: r.bal.Mn, P: r.bal.Pn, lbl: narrow ? 'Bal.' : 'Balanced', s: r.bal },
+    { id: 'M0', M: r.pb.Mn, P: 0, lbl: narrow ? 'M₀' : 'Pure bending', s: r.pb },
+    { id: 'T', M: 0, P: r.Pt, lbl: narrow ? 'T' : 'Pure tension', s: null }
+  ];
+  chart.keys = keys;
+  chart.els.gKeys.innerHTML = keys.map(k => {
+    const x = sx(k.M), y = sy(k.P), nearRight = x > W - pr - 90;
+    const ty = k.id === 'M0' ? y + 17 : k.id === 'T' ? y + 4 : k.id === 'P0' ? y + 4 : y - 9;
+    const tx = nearRight ? x - 9 : x + 10;
+    return `<g data-key="${k.id}" style="cursor:pointer"><circle cx="${x}" cy="${y}" r="5.5"/><circle cx="${x}" cy="${y}" r="14" style="fill:transparent;stroke:none"/><text x="${tx}" y="${ty}" text-anchor="${nearRight ? 'end' : 'start'}">${k.lbl}</text></g>`;
+  }).join('');
+
+  // Applied load + ray to the design curve
+  const u = RC.utilization(r.design, state.Mu, state.Pu);
+  const ax = sx(Math.abs(state.Mu)), ay = sy(state.Pu);
+  chart.els.gApplied.innerHTML = (Number.isFinite(u.u) && u.u > 0 ? `<line x1="${sx(0)}" y1="${sy(0)}" x2="${sx(u.M)}" y2="${sy(u.P)}"/>` : '') +
+    `<circle cx="${ax}" cy="${ay}" r="6.5"/>`;
+
+  renderHover();
+}
+
+/* Hover / selection on the curve */
+function defaultSel() { return { kind: 'key', id: 'B', s: state.res.bal }; }
+function nearestIndex(x, y) {
+  const r = state.res; let best = -1, bd = Infinity;
+  r.S.forEach((s, i) => {
+    const P = Math.min(s.phi * s.Pn, r.phiPnmax);
+    const d1 = Math.hypot(chart.sx(s.phi * s.Mn) - x, chart.sy(P) - y);
+    const d2 = Math.hypot(chart.sx(s.Mn) - x, chart.sy(s.Pn) - y);
+    const d = Math.min(d1, d2); if (d < bd) { bd = d; best = i; }
+  });
+  return { i: best, d: bd };
+}
+function pointerXY(e) { const rc = $('chart').getBoundingClientRect(); return { x: e.clientX - rc.left, y: e.clientY - rc.top }; }
+function onHover(e) {
+  if (state.pinned) return;
+  const { x, y } = pointerXY(e), n = nearestIndex(x, y);
+  if (n.i < 0 || n.d > 70) return;
+  state.sel = { kind: 'sweep', i: n.i, s: state.res.S[n.i] };
+  renderHover(x, y); renderInspector();
+}
+function onClick(e) {
+  const keyEl = e.target.closest('[data-key]');
+  if (keyEl) {
+    const k = chart.keys.find(q => q.id === keyEl.dataset.key);
+    state.sel = { kind: 'key', id: k.id, s: k.s }; state.pinned = true; renderHover(); renderInspector(); return;
+  }
+  if (state.pinned) { state.pinned = false; onHover(e); return; }
+  onHover(e); state.pinned = true; renderHover();
+}
+function selPoint() {
+  const r = state.res, sel = state.sel;
+  if (sel.kind === 'key' && !sel.s) {
+    if (sel.id === 'P0') return { Mn: 0, Pn: r.P0, dM: 0, dP: r.phiPnmax, phi: r.phiC };
+    return { Mn: 0, Pn: r.Pt, dM: 0, dP: 0.9 * r.Pt, phi: 0.9 };
+  }
+  const s = sel.s; return { Mn: s.Mn, Pn: s.Pn, dM: s.phi * s.Mn, dP: Math.min(s.phi * s.Pn, r.phiPnmax), phi: s.phi, s };
+}
+function renderHover(px, py) {
+  const r = state.res; if (!r || !state.sel) return;
+  const q = selPoint(), sx = chart.sx, sy = chart.sy;
+  const xn = sx(q.Mn), yn = sy(q.Pn), xd = sx(q.dM), yd = sy(q.dP);
+  chart.els.gHover.innerHTML = `
+    <line class="hov-line" x1="${xn}" y1="${yn}" x2="${xd}" y2="${yd}"/>
+    <circle class="hov-n" cx="${xn}" cy="${yn}" r="4.5"/>
+    ${state.pinned ? `<circle class="pulse" cx="${xd}" cy="${yd}" r="6"/>` : ''}
+    <circle class="hov-d" cx="${xd}" cy="${yd}" r="6"/>`;
+  // scrub slider follows the selection
+  if (q.s) { const i = r.S.indexOf(q.s); if (i >= 0) $('scrub').value = Math.round(i / (r.S.length - 1) * 1000); $('scrubVal').textContent = `${fmt(q.s.c, 0)} mm`; }
+  else $('scrubVal').textContent = state.sel.id === 'P0' ? 'c → ∞' : 'c → 0';
+  const tip = $('tip');
+  if (px !== undefined) {
+    tip.innerHTML = `φ = <b>${fmt(q.phi, 3)}</b><br>φP<sub>n</sub> = <b>${fmt(q.dP)}</b> kN<br>φM<sub>n</sub> = <b>${fmt(q.dM, 1)}</b> kN·m<br><span style="color:var(--text-muted)">P<sub>n</sub> ${fmt(q.Pn)} · M<sub>n</sub> ${fmt(q.Mn, 1)}</span>`;
+    const W = chart.W; tip.style.left = Math.min(W - 170, Math.max(4, xd + 14)) + 'px'; tip.style.top = Math.max(4, yd - 80) + 'px';
+    tip.classList.add('show');
+  }
+}
+
+/* =====================================================================
+   5. INSPECTOR: section, strain, forces, φ–εt strip, readouts, table
+   ===================================================================== */
+function regionOf(epsT, ey) { return epsT <= ey ? 'Compression-controlled' : epsT >= EPS_TC ? 'Tension-controlled' : 'Transition'; }
+function renderInspector() {
+  const r = state.res, p = r.p, g = r.g, sel = state.sel, q = selPoint();
+  let s = q.s;
+  // For P0 / pure tension use limiting strain states for the drawings
+  if (!s) s = sel.id === 'P0' ? RC.at(p, g, 1e7 * p.h) : RC.at(p, g, 1e-6 * p.h);
+  const names = { P0: 'Pure compression (P₀)', B: 'Balanced point', M0: 'Pure bending', T: 'Pure tension' };
+  $('inspTag').textContent = sel.kind === 'key' ? names[sel.id] : (state.pinned ? 'Pinned point' : 'Point on curve');
+
+  // --- Diagram geometry
+  const svg = $('insp-svg'), top = 26, hh = 236;
+  const scale = Math.min(hh / p.h, 150 / p.b), bw = p.b * scale, sh = p.h * scale, bot = top + sh;
+  svg.setAttribute('viewBox', `0 0 560 ${Math.round(bot + 48)}`);   // height follows the section's aspect ratio
+  const X0 = 20 + (150 - bw) / 2, Y = d => top + d * scale;
+  const cDraw = Math.min(s.c, p.h * 1.08), aDraw = Math.min(s.a, p.h);
+  let o = '';
+  // Panel titles
+  o += `<text x="95" y="14" text-anchor="middle" style="fill:var(--text);font-weight:600">Section</text>
+        <text x="300" y="14" text-anchor="middle" style="fill:var(--text);font-weight:600">Strain</text>
+        <text x="480" y="14" text-anchor="middle" style="fill:var(--text);font-weight:600">Forces (kN)</text>`;
+  // Section: concrete, compression zone, stress block, bars, NA
+  o += `<rect x="${X0}" y="${top}" width="${bw}" height="${sh}" rx="3" style="fill:var(--surface-2);stroke:var(--text-muted);stroke-width:1.2"/>`;
+  o += `<rect x="${X0}" y="${top}" width="${bw}" height="${Math.min(cDraw, p.h) * scale}" style="fill:var(--primary);opacity:.10"/>`;
+  o += `<rect x="${X0}" y="${top}" width="${bw}" height="${aDraw * scale}" style="fill:var(--primary);opacity:.22"/>`;
+  const Rb = Math.max(2.6, p.db / 2 * scale), inX0 = X0 + (p.cover + p.ds + p.db / 2) * scale, inX1 = X0 + bw - (p.cover + p.ds + p.db / 2) * scale;
+  o += `<rect x="${X0 + (p.cover + p.ds / 2) * scale}" y="${top + (p.cover + p.ds / 2) * scale}" width="${bw - (2 * p.cover + p.ds) * scale}" height="${sh - (2 * p.cover + p.ds) * scale}" rx="${p.spiral ? 10 : 4}" style="fill:none;stroke:var(--text-muted);stroke-width:1;stroke-dasharray:${p.spiral ? '3 3' : 'none'}"/>`;
+  s.steel.forEach(l => {
+    const col = l.yielded ? (l.eps > 0 ? 'var(--primary)' : 'var(--bad)') : 'var(--text-muted)';
+    const xs = l.n === 2 ? [inX0, inX1] : Array.from({ length: l.n }, (_, i) => inX0 + i * (inX1 - inX0) / (l.n - 1));
+    xs.forEach(x => (o += `<circle cx="${x}" cy="${Y(l.d)}" r="${Rb}" style="fill:${col}"/>`));
+  });
+  if (s.c < p.h) o += `<line x1="${X0 - 8}" x2="${X0 + bw + 8}" y1="${Y(s.c)}" y2="${Y(s.c)}" style="stroke:var(--accent);stroke-width:1.6;stroke-dasharray:6 4"/><text x="${X0 + bw + 6}" y="${Y(s.c) - 4}" style="fill:var(--accent);font-weight:600">NA</text>`;
+  o += `<text x="${X0 + bw / 2}" y="${bot + 16}" text-anchor="middle">b = ${p.b}, h = ${p.h} mm</text>`;
+
+  // Strain diagram: linear from εcu at top to ε at bottom
+  const eTop = EPS_CU, eBot = EPS_CU * (s.c - p.h) / s.c;
+  const emax = Math.max(Math.abs(eTop), Math.abs(eBot), EPS_TC * 1.05);
+  const SX0 = 300, k = 78 / emax, ex = e => SX0 - e * k;        // compression drawn to the left
+  const yTop = top, yBot = top + sh, clip = v => Math.max(SX0 - 92, Math.min(SX0 + 92, v));
+  o += `<line x1="${SX0}" x2="${SX0}" y1="${yTop - 4}" y2="${yBot + 4}" style="stroke:var(--text-muted)"/>`;
+  [r.ey, -r.ey, -EPS_TC].forEach((e, i) => o += `<line x1="${ex(e)}" x2="${ex(e)}" y1="${yTop}" y2="${yBot}" style="stroke:${i === 2 ? 'var(--ok)' : 'var(--bad)'};stroke-width:1;stroke-dasharray:2 3;opacity:.7"/>`);
+  o += `<text x="${ex(-r.ey)}" y="${yBot + 14}" text-anchor="middle" style="fill:var(--bad)">−εy</text><text x="${ex(r.ey)}" y="${yBot + 14}" text-anchor="middle" style="fill:var(--bad)">εy</text><text x="${ex(-EPS_TC)}" y="${yBot + 26}" text-anchor="middle" style="fill:var(--ok)">0.005</text>`;
+  o += `<polygon points="${SX0},${yTop} ${clip(ex(eTop))},${yTop} ${clip(ex(eBot))},${yBot} ${SX0},${yBot}" style="fill:var(--primary);opacity:.14;stroke:var(--primary);stroke-width:1.6"/>`;
+  o += `<text x="${clip(ex(eTop)) - 2}" y="${yTop - 3}" text-anchor="middle" style="fill:var(--text)">0.003</text>`;
+  s.steel.forEach(l => o += `<circle cx="${clip(ex(l.eps))}" cy="${Y(l.d)}" r="3.4" style="fill:${l.yielded ? (l.eps > 0 ? 'var(--primary)' : 'var(--bad)') : 'var(--text-muted)'}"/>`);
+  o += `<text x="${SX0}" y="${yBot + 40}" text-anchor="middle">← compression · tension →</text>`;
+
+  // Forces: stress block + steel forces
+  const FX = 470, maxF = Math.max(s.Cc, ...s.steel.map(l => Math.abs(l.F)), 1), fk = 70 / maxF;
+  o += `<line x1="${FX}" x2="${FX}" y1="${yTop - 4}" y2="${yBot + 4}" style="stroke:var(--text-muted)"/>`;
+  o += `<rect x="${FX - 34}" y="${yTop}" width="34" height="${aDraw * scale}" style="fill:var(--primary);opacity:.25"/>`;
+  o += `<text x="${FX - 38}" y="${yTop + Math.max(12, aDraw * scale / 2)}" text-anchor="end" style="fill:var(--primary);font-weight:600">C<tspan baseline-shift="sub" font-size="8">c</tspan> ${fmt(s.Cc)}</text>`;
+  o += `<text x="${FX - 17}" y="${yTop + aDraw * scale + 12}" text-anchor="middle">a = ${fmt(s.a, 0)}</text>`;
+  s.steel.forEach(l => {
+    const len = Math.max(6, Math.abs(l.F) * fk), y = Y(l.d), comp = l.F > 0, col = comp ? 'var(--primary)' : 'var(--bad)';
+    const x1 = FX, x2 = comp ? FX - len : FX + len;   // compression arrows point into the section (left), tension away (right)
+    const head = comp ? `${x2 + 6},${y - 4} ${x2},${y} ${x2 + 6},${y + 4}` : `${x2 - 6},${y - 4} ${x2},${y} ${x2 - 6},${y + 4}`;
+    if (Math.abs(l.F) > 0.05) o += `<line x1="${x1}" x2="${x2}" y1="${y}" y2="${y}" style="stroke:${col};stroke-width:2.2"/><polygon points="${head}" style="fill:${col}"/>`;
+    o += `<text x="${comp ? FX + 6 : x2 + 4}" y="${y + 4}" style="fill:${col}">${fmt(l.F)}</text>`;
+  });
+  svg.innerHTML = o;
+
+  // φ–εt strip
+  const P = $('phi-svg'), x0 = 40, x1 = 540, eMin = -0.003, eMax = 0.008, px = e => x0 + (e - eMin) / (eMax - eMin) * (x1 - x0), py = f => 78 - (f - 0.6) / 0.35 * 64;
+  const lo = r.phiC, ey = r.ey;
+  let f = `<line x1="${x0}" x2="${x1}" y1="78" y2="78" style="stroke:var(--text-muted)"/>`;
+  f += `<polyline points="${px(eMin)},${py(lo)} ${px(ey)},${py(lo)} ${px(EPS_TC)},${py(0.9)} ${px(eMax)},${py(0.9)}" style="fill:none;stroke:var(--primary);stroke-width:2.4"/>`;
+  [[ey, 'εy'], [EPS_TC, '0.005'], [0, '0']].forEach(([e, t]) => f += `<line x1="${px(e)}" x2="${px(e)}" y1="76" y2="81" style="stroke:var(--text-muted)"/><text x="${px(e)}" y="91" text-anchor="middle">${t}</text>`);
+  f += `<text x="${x0 - 6}" y="${py(0.9) + 4}" text-anchor="end">0.90</text><text x="${x0 - 6}" y="${py(lo) + 4}" text-anchor="end">${lo.toFixed(2)}</text><text x="${x1}" y="10" text-anchor="end">φ vs. net tensile strain εt</text>`;
+  const eC = Math.max(eMin, Math.min(eMax, s.epsT));
+  f += `<circle cx="${px(eC)}" cy="${py(q.phi)}" r="6" style="fill:var(--accent);stroke:var(--surface);stroke-width:2"/>`;
+  P.innerHTML = f;
+
+  // Readouts
+  const region = sel.kind === 'key' && sel.id === 'T' ? 'Tension-controlled' : sel.kind === 'key' && sel.id === 'P0' ? 'Compression-controlled' : regionOf(s.epsT, r.ey);
+  const regCol = region.startsWith('Tension') ? 'var(--ok)' : region.startsWith('Comp') ? 'var(--bad)' : 'var(--accent)';
+  const isLimit = sel.kind === 'key' && !sel.s;
+  const e = Math.abs(q.Pn) > 1e-6 ? q.Mn / q.Pn * 1000 : Infinity;
+  $('readouts').innerHTML = [
+    ['c', isLimit ? (sel.id === 'P0' ? '∞' : '0') : `${fmt(s.c, 1)} mm`], ['a = β₁c', isLimit ? (sel.id === 'P0' ? `${p.h} mm` : '0') : `${fmt(s.a, 1)} mm`], ['β₁', fmt(s.b1, 3)],
+    ['εt', isLimit ? (sel.id === 'P0' ? '−0.003' : '→ ∞') : fmt(s.epsT, 5)], ['Z = εs₁/εy', isLimit ? '–' : fmt(-s.epsT / r.ey, 2)], ['φ', fmt(q.phi, 3)],
+    ['Pn', `${fmt(q.Pn)} kN`], ['Mn', `${fmt(q.Mn, 1)} kN·m`], ['e = Mn/Pn', Number.isFinite(e) ? `${fmt(e, 0)} mm` : '∞'],
+    ['φPn', `${fmt(q.dP)} kN`], ['φMn', `${fmt(q.dM, 1)} kN·m`], ['Cc', isLimit ? '–' : `${fmt(s.Cc)} kN`]
+  ].map(([a, b]) => `<div class="ro"><span>${a}</span><b>${b}</b></div>`).join('') +
+    `<div class="ro wide"><span>Region</span><span class="region" style="color:${regCol}">${region}</span></div>`;
+
+  // Steel table
+  const rows = isLimit ? r.g.L.map(l => ({ ...l, eps: sel.id === 'P0' ? EPS_CU : -Infinity, fs: sel.id === 'P0' ? p.fy : -p.fy, F: (sel.id === 'P0' ? l.As * (p.fy - 0.85 * p.fc) : -l.As * p.fy) / 1e3, yielded: true })) : s.steel;
+  $('steelTable').innerHTML = `<thead><tr><th>Row</th><th>d<sub>i</sub> mm</th><th>A<sub>si</sub> mm²</th><th>ε<sub>si</sub> ×10⁻³</th><th>f<sub>si</sub> MPa</th><th>F<sub>si</sub> kN</th></tr></thead><tbody>` +
+    rows.map((l, i) => `<tr><td>${i + 1} <span class="${l.yielded ? 'tag-y' : 'tag-e'}">${l.yielded ? (l.fs > 0 ? 'yield C' : 'yield T') : 'elastic'}</span></td><td>${fmt(l.d, 0)}</td><td>${fmt(l.As, 0)}</td><td>${Number.isFinite(l.eps) ? fmt(l.eps * 1e3, 3) : '−∞'}</td><td>${fmt(l.fs, 1)}</td><td>${fmt(l.F, 1)}</td></tr>`).join('') + '</tbody>';
+}
+
+/* =====================================================================
+   6. APPLIED LOAD CHECK
+   ===================================================================== */
+function renderCheck() {
+  const r = state.res, u = RC.utilization(r.design, state.Mu, state.Pu), ok = u.u <= 1 + 1e-9;
+  const e = Math.abs(state.Pu) > 1e-9 ? Math.abs(state.Mu) / state.Pu * 1000 : Infinity;
+  const el = $('result'); el.className = 'result ' + (ok ? 'ok' : 'bad');
+  el.innerHTML = `
+    <div class="verdict">${ok ? '✓ Inside the design curve' : '✕ Outside the design curve'}<span class="pill ${ok ? '' : 'muted'}" style="margin-left:auto">${Number.isFinite(u.u) ? fmt(u.u * 100, 1) + ' %' : '–'}</span></div>
+    <div class="meter"><div style="width:${Math.min(100, (Number.isFinite(u.u) ? u.u : 1) * 100)}%"></div></div>
+    <small>Capacity on the same ray: φP<sub>n</sub> = <b class="num">${fmt(u.P)}</b> kN, φM<sub>n</sub> = <b class="num">${fmt(u.M, 1)}</b> kN·m · e = ${Number.isFinite(e) ? fmt(e, 0) + ' mm' : '∞'}${state.Pu > r.phiPnmax ? ` · P<sub>u</sub> exceeds φP<sub>n,max</sub> = ${fmt(r.phiPnmax)} kN` : ''}</small>`;
+}
+
+/* =====================================================================
+   7. GUIDED EXPERIMENTS
+   ===================================================================== */
+const EXPERIMENTS = [
+  { t: 'Double the steel', d: 'Change 8φ20 to 8φ28 (ρt ≈ 1.6% → 3.1%). The balanced point moves far to the right, but Pnb changes only a few percent: in a symmetric section the extra compression and tension steel forces largely cancel.',
+    go: () => setP({ db: 28 }) },
+  { t: 'Tied → spiral', d: 'Switch to a spiral. The compression-controlled part of the design curve rises (φ 0.65 → 0.75, cap 0.80 → 0.85 P₀). The tension-controlled part does not move at all.',
+    go: () => state.setType(true) },
+  { t: "Stronger concrete", d: "Raise f'c from 30 to 50 MPa. P₀ grows a lot, but pure bending barely changes: once the section is tension-controlled, steel sets the moment. Note β₁ dropping to 0.69.",
+    go: () => setP({ fc: 50 }) },
+  { t: 'Walk down the curve', d: 'Drag the c slider from top to bottom. Watch εt pass εy (balanced) and 0.005, and φ climb from 0.65 to 0.90: the design curve closes in on the nominal curve below the balanced point.',
+    go: () => { state.pinned = true; animateScrub(); } }
+];
+function setP(o) { Object.assign(state.p, o); syncers.forEach(s => s()); update(); }
+function buildExperiments() {
+  $('exp-host').innerHTML = EXPERIMENTS.map((x, i) => `<div class="exp"><div class="n">EXPERIMENT ${i + 1}</div><h3>${x.t}</h3><p>${x.d}</p><button class="btn primary" type="button" data-exp="${i}">Try it</button></div>`).join('');
+  $('exp-host').addEventListener('click', e => {
+    const b = e.target.closest('[data-exp]'); if (!b) return;
+    const i = +b.dataset.exp;
+    if (i < 3) { state.p = { ...DEFAULTS }; syncers.forEach(s => s()); state.setType(false); pinCurve(); }
+    EXPERIMENTS[i].go();
+    document.querySelector('#chart').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+}
+function animateScrub() {
+  const el = $('scrub'); let v = 0; const step = () => { v += 8; el.value = v; el.dispatchEvent(new Event('input')); if (v < 1000) requestAnimationFrame(step); }; step();
+}
+
+/* =====================================================================
+   8. EQUATIONS (KaTeX with plain-TeX fallback)
+   ===================================================================== */
+const EQS = [
+  ['Stress-block factor', String.raw`\beta_1 = 0.85 - 0.05\,\frac{f'_c-28}{7},\quad 0.65 \le \beta_1 \le 0.85`],
+  ['Strain compatibility (row i)', String.raw`\varepsilon_{si} = \varepsilon_{cu}\,\frac{c-d_i}{c},\qquad \varepsilon_{cu}=0.003`],
+  ['Steel stress', String.raw`f_{si} = E_s\,\varepsilon_{si},\qquad -f_y \le f_{si} \le f_y`],
+  ['Concrete compression', String.raw`a=\beta_1 c \le h,\qquad C_c = 0.85\,f'_c\,a\,b`],
+  ['Steel force', String.raw`F_{si} = \begin{cases} A_{si}\,f_{si} & d_i > a \\ A_{si}\,(f_{si}-0.85f'_c) & d_i < a \end{cases}`],
+  ['Equilibrium', String.raw`P_n = C_c + \sum F_{si},\qquad M_n = C_c\!\left(\tfrac{h}{2}-\tfrac{a}{2}\right) + \sum F_{si}\!\left(\tfrac{h}{2}-d_i\right)`],
+  ['Pure compression and cap', String.raw`P_0 = 0.85f'_c(A_g-A_{st}) + f_y A_{st},\quad P_{n,\max} = \{0.80,\,0.85\}\,P_0`],
+  ['Balanced point', String.raw`c_b = \frac{\varepsilon_{cu}\,d_t}{\varepsilon_{cu}+\varepsilon_y},\qquad \varepsilon_y=\frac{f_y}{E_s}`],
+  ['Net tensile strain', String.raw`\varepsilon_t = \varepsilon_{cu}\,\frac{d_t-c}{c},\qquad Z = -\frac{\varepsilon_t}{\varepsilon_y}`],
+  ['Strength reduction (tied)', String.raw`\phi = \begin{cases} 0.65 & \varepsilon_t \le \varepsilon_y \\ 0.65+0.25\,\frac{\varepsilon_t-\varepsilon_y}{0.005-\varepsilon_y} & \varepsilon_y<\varepsilon_t<0.005 \\ 0.90 & \varepsilon_t \ge 0.005 \end{cases}`],
+  ['Strength reduction (spiral)', String.raw`\phi = 0.75 + 0.15\,\frac{\varepsilon_t-\varepsilon_y}{0.005-\varepsilon_y},\quad 0.75 \le \phi \le 0.90`],
+  ['Pure tension', String.raw`P_{nt} = -f_y A_{st},\qquad \phi = 0.90`]
+];
+function buildEquations() {
+  $('eq-host').innerHTML = EQS.map(([c, t], i) => `<div class="eq"><div class="cap">${c}</div><div class="tex" id="eq${i}"><code>${t.replace(/</g, '&lt;')}</code></div></div>`).join('');
+  const render = () => { if (!window.katex) return false; EQS.forEach(([, t], i) => { try { katex.render(t, $('eq' + i), { displayMode: true, throwOnError: false }); } catch (e) { } }); return true; };
+  if (!render()) window.addEventListener('load', render);
+}
+
+/* =====================================================================
+   9. MAIN UPDATE LOOP
+   ===================================================================== */
+function update() {
+  state.res = RC.analyze(state.p);
+  // keep the selection meaningful after a parameter change
+  if (!state.sel || state.sel.kind === 'key') state.sel = state.sel && state.sel.kind === 'key' ? { ...state.sel, s: ({ B: state.res.bal, M0: state.res.pb })[state.sel.id] || null } : defaultSel();
+  else { const i = Math.min(state.sel.i, state.res.S.length - 1); state.sel = { kind: 'sweep', i, s: state.res.S[i] }; }
+  renderDerived(); renderChart(); renderInspector(); renderCheck();
+}
+function initScrub() {
+  $('scrub').addEventListener('input', e => {
+    const r = state.res, i = Math.round(+e.target.value / 1000 * (r.S.length - 1));
+    state.pinned = true; state.sel = { kind: 'sweep', i, s: r.S[i] }; renderHover(); renderInspector();
+  });
+}
+
+buildControls(); initChart(); initScrub(); buildExperiments(); buildEquations(); update();
+document.addEventListener('themechange', () => renderChart());
+window.RC = RC; window.__state = state; window.__chart = chart;   // exposed for verification / reuse
+</script>
+</body>
+</html>
